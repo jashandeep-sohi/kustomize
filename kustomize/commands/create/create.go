@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/kustomize/api/konfig"
 	ldrhelper "sigs.k8s.io/kustomize/api/pkg/loader"
 	"sigs.k8s.io/kustomize/api/resource"
+	"sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/kustomize/kustomize/v5/commands/internal/kustfile"
 	"sigs.k8s.io/kustomize/kustomize/v5/commands/internal/util"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
@@ -29,6 +30,7 @@ type createFlags struct {
 	detectResources bool
 	detectRecursive bool
 	path            string
+	component       bool
 }
 
 // NewCmdCreate returns an instance of 'create' subcommand.
@@ -48,6 +50,9 @@ func NewCmdCreate(fSys filesys.FileSystem, rf *resource.Factory) *cobra.Command 
 
 	# Create a new kustomization with multiple resources and fields set.
 	kustomize create --resources deployment.yaml,service.yaml,../base --namespace staging --nameprefix acme-
+
+	# Create a new Component kustomization.
+	kustomize create --component
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCreate(opts, fSys, rf)
@@ -93,6 +98,11 @@ func NewCmdCreate(fSys filesys.FileSystem, rf *resource.Factory) *cobra.Command 
 		"recursive",
 		false,
 		"Enable recursive directory searching for resource auto-detection.")
+	c.Flags().BoolVar(
+		&opts.component,
+		"component",
+		false,
+		"Create a Component kustomization file.")
 	return c
 }
 
@@ -133,6 +143,12 @@ func runCreate(opts createFlags, fSys filesys.FileSystem, rf *resource.Factory) 
 	if err != nil {
 		return err
 	}
+
+	if opts.component {
+		m.APIVersion = types.ComponentVersion
+		m.Kind = types.ComponentKind
+	}
+
 	m.Resources = resources
 	m.Namespace = opts.namespace
 	m.NamePrefix = opts.prefix
